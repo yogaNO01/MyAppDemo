@@ -1,4 +1,3 @@
-// DuolingoChoice.jsx
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -28,50 +27,50 @@ export default function HomeScreen({
 }) {
   
   const progress = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
   const [currentProgress, setCurrentProgress] = useState(0);
   const [selected, setSelected] = useState(null);
   const [revealed, setRevealed] = useState(false);
+  const [sacle, setSacle] = useState(1.2);
   
+  // 气泡文字跳起动画
+  const bubbleTextAnim = useRef(new Animated.Value(0)).current;
+  
+  // 进度条定时器引用
   const progressInterval = useRef(null);
 
-  // 缩放动画函数
-  const triggerScaleAnimation = () => {
-    // 使用序列动画确保顺序执行
-    Animated.sequence([
-      // 先放大到1.2倍
-      Animated.timing(scaleAnim, {
-        toValue: 1.2,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      // 等待1秒
-      Animated.delay(1000),
-      // 恢复为1倍
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start();
-  };
-
   useEffect(() => {
+    // 启动气泡文字跳起动画（循环执行）
+    const startBubbleAnimation = () => {
+      Animated.sequence([
+        Animated.timing(bubbleTextAnim, {
+          toValue: -10, // 向上跳10px
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bubbleTextAnim, {
+          toValue: 0, // 落回原位
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        // Animated.delay(2000), // 等待2秒后再次执行
+      ]).start(() => {
+        // startBubbleAnimation(); // 循环执行
+      });
+    };
+
+    startBubbleAnimation();
+
     // 启动进度条动画 - 每隔10秒增加10%
     progressInterval.current = setInterval(() => {
       setCurrentProgress(prev => {
         const newProgress = Math.min(prev + 10, 100);
-        
-        // 触发缩放动画
-        triggerScaleAnimation();
-        
-        // 使用动画更新进度条
+        setSacle(1.2);
         Animated.timing(progress, {
           toValue: newProgress,
           duration: 500,
-          useNativeDriver: true, // 宽度变化不支持原生驱动
+          useNativeDriver: false,
         }).start();
-        
+        setSacle(1.2);
         return newProgress;
       });
     }, 10000);
@@ -88,7 +87,6 @@ export default function HomeScreen({
   const handleSelect = (i) => {
     if (disabled || revealed) return;
     
-    // 停止进度条
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
       progressInterval.current = null;
@@ -104,14 +102,12 @@ export default function HomeScreen({
   const resetProgress = () => {
     setCurrentProgress(0);
     progress.setValue(0);
-    scaleAnim.setValue(1);
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
     }
     progressInterval.current = setInterval(() => {
       setCurrentProgress(prev => {
         const newProgress = Math.min(prev + 10, 100);
-        triggerScaleAnimation();
         Animated.timing(progress, {
           toValue: newProgress,
           duration: 500,
@@ -119,12 +115,12 @@ export default function HomeScreen({
         }).start();
         return newProgress;
       });
-    }, 10000);
+    }, 5000);
   };
 
   // animated values per choice for scale & background interpolation
   const animValues = useRef(choices.map(() => new Animated.Value(0))).current;
-
+  
   const onPressIn = (i) => {
     Animated.spring(animValues[i], {
       toValue: 1,
@@ -133,7 +129,7 @@ export default function HomeScreen({
       tension: 200,
     }).start();
   };
-
+  
   const onPressOut = (i) => {
     Animated.spring(animValues[i], {
       toValue: 0,
@@ -213,51 +209,63 @@ export default function HomeScreen({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={{ display: 'flex', flexDirection: 'row' , alignItems: 'center' ,marginBottom: 30 }}>
         <Image
           source={require('@/assets/images/icon/close.png')}
-          style={styles.closeIcon}
+          style={{ width: 25, height: 25, marginRight: 18, alignSelf: 'flex-start' }}
         />
-        {/* 进度条容器 - 使用绝对定位来处理缩放中心点 */}
-        <View style={styles.progressWrapper}>
-          <View style={styles.progressBarContainer}>
-            <Animated.View 
-              style={[
-                styles.progressBar, 
-                { 
-                  width: progress.interpolate({ 
-                    inputRange: [0, 100], 
-                    outputRange: ['0%', '100%'] 
-                  }),
-                  transform: [{ scaleX: scaleAnim }] // 只缩放X轴，保持高度不变
-                }
-              ]}
-            />
-            <Image 
-              source={require('@/assets/images/icon/process.png')}
-              style={styles.progressIcon}
-            />
-          </View>
+        <View style={styles.progressBarContainer}>
+          <Animated.View 
+            style={[
+              styles.progressBar, 
+              { 
+                width: progress.interpolate({ 
+                  inputRange: [0, 100], 
+                  outputRange: ['0%', '100%'] 
+                }),
+                transform: [{ scale: sacle }]
+              }
+            ]}
+          />
+          <Image 
+            source={require('@/assets/images/icon/process.png')}
+            style={{ width: 25, height: 8, position: 'absolute', top: 6, left: 20, zIndex: 10, borderRadius: 20 }}
+          />
         </View>
       </View>
-
-      <View style={styles.wordHeader}>
+      
+      <View style={{ width: '100%', flexDirection: 'row', marginBottom: 15 }}>
         <Image 
           source={require('@/assets/images/icon/wordIcon.png')}
-          style={styles.wordIcon}
+          style={{ width: 25, height: 25, marginRight: 14, alignSelf: 'flex-start' }}
         />
-        <Text style={styles.wordLabel}>新单词</Text>
+        <Text style={{ color: '#9265fb',fontSize: 16, fontWeight: 600 }}>新单词</Text>
       </View>
 
-      <Text style={styles.title}>翻译这句话</Text>
+      <Text style={{ fontSize: 24, fontWeight: 700, color: '#343434', marginBottom: 20 }}>翻译这句话</Text>
       
-      <LottieView
-        source={require('@/assets/images/lottie/PATH_BEA_COOKING.json')}
-        style={styles.lottieAnimation}
-        autoPlay={true}
-        loop={true}
-        resizeMode="cover"
-      />
+      <View style={{ display: 'flex', flexDirection: 'row' }}>
+        <LottieView
+          source={require('@/assets/images/lottie/PATH_BEA_COOKING.json')}
+          style={{ width: 180, height: 180, marginBottom: 20 }}
+          autoPlay={true}
+          loop={true}
+          resizeMode="cover"
+        />
+        <View style={styles.bubble}>
+          <View style={styles.triangle} />
+          <Animated.Text 
+            style={[
+              styles.bubbleText,
+              {
+                transform: [{ translateY: bubbleTextAnim }]
+              }
+            ]}
+          >
+            coffee
+          </Animated.Text>
+        </View>
+      </View>
       
       <View style={styles.questionBox}>
         <Text style={styles.questionText}>{question}</Text>
@@ -293,71 +301,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     backgroundColor: '#ffffff'
   },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30
-  },
-  closeIcon: {
-    width: 25,
-    height: 25,
-    marginRight: 18,
-    alignSelf: 'flex-start'
-  },
-  progressWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-  },
   progressBarContainer: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'row',
     height: 24,
+    marginRight: 20,
     backgroundColor: '#f0f0f0',
     borderRadius: 14,
-    overflow: 'hidden',
-    position: 'relative'
+    overflow: 'hidden'
   },
   progressBar: {
     height: '100%',
     backgroundColor: '#4CAF50',
-    borderRadius: 14,
-    position: 'relative',
-  },
-  progressIcon: {
-    width: 22,
-    height: 7,
-    position: 'absolute',
-    top: 5.5,
-    left: 17,
-    zIndex: 10,
-    borderRadius: 20
-  },
-  wordHeader: {
-    width: '100%',
-    flexDirection: 'row',
-    marginBottom: 15,
-    alignItems: 'center'
-  },
-  wordIcon: {
-    width: 25,
-    height: 25,
-    marginRight: 14
-  },
-  wordLabel: {
-    color: '#9265fb',
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#343434',
-    marginBottom: 20
-  },
-  lottieAnimation: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
-    alignSelf: 'center'
+    borderRadius: 2,
+    position: 'relative'
   },
   questionBox: {
     paddingVertical: 12,
@@ -372,6 +330,43 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#14332f',
+  },
+  bubble: {
+    width: 140,
+    height: 50,
+    marginTop: 30,
+    borderColor: '#EBECED',
+    borderRadius: 10,
+    borderWidth: 2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  triangle: {
+    position: 'absolute', 
+    top: '35%', 
+    left: -20, 
+    width: 0, 
+    height: 0,
+    borderStyle: 'solid', 
+    borderWidth: 10,
+    borderRightColor: '#EBECED',
+    borderTopColor: 'transparent',
+    borderLeftColor: 'transparent',
+    borderBottomColor: 'transparent'
+  },
+  bubbleText: {
+    fontSize: 16,
+    color: '#9265fb',
+    fontWeight: '700',
+    letterSpacing: 1,
+    borderStyle: 'dashed',
+    borderColor: '#9265fb',
+    borderBottomWidth: 1.9,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
   },
   choicesList: {
     gap: 10,
